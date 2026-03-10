@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sessions  Session[]
+
+  @@map("users")
+}
+
+model Session {
+  id          String        @id @default(uuid())
+  userId      String
+  domain      String
+  state       SessionState  @default(IDLE)
+  resumeText  String?
+  resumePath  String?       // local file path e.g. uploads/resumes/abc.pdf
+  startTime   DateTime      @default(now())
+  endTime     DateTime?
+  createdAt   DateTime      @default(now())
+
+  user        User          @relation(fields: [userId], references: [id])
+  questions   Question[]
+  report      Report?
+
+  @@map("sessions")
+}
+
+enum SessionState {
+  IDLE
+  ROUND_1_ACTIVE
+  TRANSITION
+  ROUND_2_ACTIVE
+  PROCESSING
+  COMPLETE
+}
+
+model Question {
+  id             String   @id @default(uuid())
+  sessionId      String
+  round          Int
+  questionIndex  Int
+  questionText   String
+  expectedAnswer String
+
+  session        Session  @relation(fields: [sessionId], references: [id])
+  answer         Answer?
+
+  @@map("questions")
+}
+
+model Answer {
+  id             String   @id @default(uuid())
+  questionId     String   @unique
+  audioPath      String?  // local file path e.g. uploads/audio/abc.webm
+  transcript     String?
+  technicalScore Float?
+  graderNote     String?
+  eyeContactPct  Float?
+  wpm            Float?
+  fillerCount    Int?
+  silenceRatio   Float?
+  createdAt      DateTime @default(now())
+
+  question       Question @relation(fields: [questionId], references: [id])
+
+  @@map("answers")
+}
+
+model Report {
+  id              String   @id @default(uuid())
+  sessionId       String   @unique
+  finalScore      Float
+  technicalScore  Float
+  eyeContactScore Float
+  vocalScore      Float
+  avgWpm          Float?
+  totalFillers    Int?
+  avgSilence      Float?
+  writtenFeedback String
+  createdAt       DateTime @default(now())
+
+  session         Session  @relation(fields: [sessionId], references: [id])
+
+  @@map("reports")
+}
